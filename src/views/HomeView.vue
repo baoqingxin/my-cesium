@@ -10,6 +10,7 @@ import 'cesium/Source/Widgets/widgets.css'
 import { onMounted } from 'vue'
 
 const img = require('../assets/nongyerongdan.png')
+// const model = require('../assets/Monster.gltf')
 let viewer = null
 
 onMounted(() => {
@@ -24,10 +25,20 @@ onMounted(() => {
     // imageryProvider: new Cesium.UrlTemplateImageryProvider({
     //   url: "https://webst02.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}",
     // }),
-    baseLayerPicker: false,
-    infoBox: false  // 禁用默认提示框
+    // baseLayerPicker: false,
+    // infoBox: false  // 禁用默认提示框
+    infoBox: false,
+    selectionIndicator: false,
+    shadows: true,
+    shouldAnimate: true,
   }
   initMap(option)
+
+  viewer.scene.moon.show = false // 隐藏月亮
+
+  // 调试工具
+  // viewer.extend(Cesium.viewerCesiumInspectorMixin);
+
 
   var beijingPosition = Cesium.Cartesian3.fromDegrees(116.397128, 39.916527, 10000.0); // 经度, 纬度, 高度（米）
 
@@ -55,9 +66,11 @@ onMounted(() => {
   viewer._cesiumWidget._creditContainer.style.display = "none"; // 隐藏版权
   console.log(viewer)
 
-  addPoint()
+  // addPoint()
   // addMultiPoint()
   // addCustomizePoint()
+  addModelByEntity()
+  // addModelByCZML()
 })
 
 function initMap (option) {
@@ -194,6 +207,79 @@ function addCustomizePoint() {
       pixelOffset: new Cesium.Cartesian2(0, -35)
     }
   })
+}
+
+// 添加模型 entity方式
+function addModelByEntity() {
+  // viewer.scene.primitives.add(Cesium.Model.fromGltf({
+  //   url: 'https://s3.amazonaws.com/cesiumjs.org/Cesium_Logo_Color.gltf',
+  //   modelMatrix: Cesium.Transforms.eastNorthUpToFixedFrame(position),
+  //   minimumPixelSize: 128
+  // }))
+  viewer.entities.removeAll();
+  const position = Cesium.Cartesian3.fromDegrees(
+    116.391, 
+    39.907,
+    10.0,
+  );
+  const heading = Cesium.Math.toRadians(135);
+  const pitch = 0;
+  const roll = 0;
+  const hpr = new Cesium.HeadingPitchRoll(heading, pitch, roll);
+  const orientation = Cesium.Transforms.headingPitchRollQuaternion(position, hpr);
+  var modelEntity = viewer.entities.add({
+    name: 'Cesium Air',
+    model: {
+      // uri: '/Monster.gltf',
+      // uri: '/Buggy.gltf',
+      uri: '/Cesium_Air.glb',
+      // uri: 'https://s3.amazonaws.com/cesiumjs.org/Cesium_Logo_Color.gltf',
+      minimumPixelSize: 3,
+      maximumScale: 20,
+      show: true,
+    },
+    position: position,
+    orientation: orientation
+  })
+  viewer.trackedEntity = modelEntity;
+  // viewer.flyTo(modelEntity)
+}
+
+function addModelByCZML() {
+  const czml = [
+    {
+      id: 'document',
+      name: 'CZML Model',
+      version: '1.0'
+    }, 
+    {
+      id: 'airplane_model',
+      name: 'airplane',
+      position: {
+        cartographicDegrees: [116.391, 39.907, 1000],  // 使用标准的 CZML cartographicDegrees 经度, 纬度, 高度
+      },
+      model: {
+        gltf: '/Soldier.glb',     // 模型的 glTF 路径
+        scale: 12.0,            // 模型的缩放比例
+        minimumPixelSize: 64,    // 模型的最小像素大小
+      }
+  }];
+  
+  const dataSourcePromise = viewer.dataSources.add(Cesium.CzmlDataSource.load(czml))
+
+  // dataSourcePromise.then(dataSource => {
+  //   viewer.trackedEntity = dataSource.entities.getById('airplane_model')
+  // }).catch(function(err) {
+  //   console.log(err)
+  // })
+
+  dataSourcePromise.then(dataSource => {
+    viewer.trackedEntity = dataSource.entities.getById('airplane_model');
+    console.log(111)
+  }).catch(function(err) {
+    console.error("Error loading CZML:", err);
+  });
+  viewer.zoomTo(dataSourcePromise)
 }
 
 </script>
